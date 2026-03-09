@@ -868,6 +868,9 @@ require('lazy').setup({
     opts = {
       suppressed_dirs = { '~/', '~/Projects', '~/Downloads', '/' },
       single_session_mode = true,
+      session_lens = {
+        picker = 'telescope',
+      },
       -- log_level = 'debug',
     },
   },
