@@ -264,7 +264,7 @@ require('lazy').setup({
       -- Document existing key chains
       spec = {
         { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
-        { '<leader>t', group = '[T]oggle' },
+        { '<leader>t', group = '[T]erminal' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
         { 'gr', group = 'LSP Actions', mode = { 'n' } },
         { '<leader>c', group = '[C]olor' },
@@ -543,9 +543,9 @@ require('lazy').setup({
           -- code, if the language server you are using supports them
           --
           -- This may be unwanted, since they displace some of your code
-          if client and client:supports_method('textDocument/inlayHint', event.buf) then
-            map('<leader>th', function() vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf }) end, '[T]oggle Inlay [H]ints')
-          end
+          -- if client and client:supports_method('textDocument/inlayHint', event.buf) then
+          --   map('<leader>th', function() vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf }) end, '[T]oggle Inlay [H]ints')
+          -- end
         end,
       })
 
@@ -880,7 +880,10 @@ require('lazy').setup({
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter-intro`
     config = function()
       local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'python' }
-      require('nvim-treesitter').install(parsers)
+
+      local treesitter = require 'nvim-treesitter'
+
+      treesitter.install(parsers)
       vim.api.nvim_create_autocmd('FileType', {
         callback = function(args)
           local buf, filetype = args.buf, args.match
@@ -930,6 +933,49 @@ require('lazy').setup({
       }
     end,
   },
+
+  {
+    'akinsho/toggleterm.nvim',
+    version = '*',
+    config = function()
+      local opts = {
+        direction = 'horizontal',
+        size = function(term)
+          if term.direction == 'horizontal' then
+            return 15
+          elseif term.direction == 'vertical' then
+            return vim.o.columns * 0.4
+          end
+        end,
+        open_mapping = [[<leader>tt]],
+      }
+
+      local toggleterm = require 'toggleterm'
+      toggleterm.setup(opts)
+
+      vim.keymap.set(
+        'v',
+        '<leader>tst',
+        function() toggleterm.send_lines_to_terminal('visual_lines', true, { args = vim.v.count }) end,
+        { desc = '[T]erminal [S]end [T]rimmed' }
+      )
+
+      vim.keymap.set(
+        'v',
+        '<leader>tsu',
+        function() toggleterm.send_lines_to_terminal('visual_lines', false, { args = vim.v.count }) end,
+        { desc = '[T]erminal [S]end [U]ntrimmed' }
+      )
+
+      -- Auto insert mode
+      vim.api.nvim_create_autocmd({ 'WinEnter', 'BufWinEnter', 'TermOpen' }, {
+        callback = function(args)
+          if vim.startswith(vim.api.nvim_buf_get_name(args.buf), 'term://') then vim.cmd 'startinsert' end
+        end,
+      })
+    end,
+  },
+
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
   -- place them in the correct locations.
