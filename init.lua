@@ -169,6 +169,11 @@ vim.api.nvim_create_autocmd({ 'BufLeave', 'FocusLost' }, {
   end,
 })
 
+-- Close copilot chat buffer on vim exit if it exists so it doesn't crash on restart
+vim.api.nvim_create_autocmd('VimLeavePre', {
+  callback = function() vim.cmd 'silent! bd! copilot-chat' end,
+})
+
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    See `:help lazy.nvim.txt` or https://github.com/folke/lazy.nvim for more info
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
@@ -442,7 +447,7 @@ require('lazy').setup({
       'WhoIsSethDaniel/mason-tool-installer.nvim',
 
       -- Useful status updates for LSP.
-      { 'j-hui/fidget.nvim', opts = {} },
+      -- { 'j-hui/fidget.nvim', opts = {} },
 
       -- Allows extra capabilities provided by blink.cmp
       'saghen/blink.cmp',
@@ -548,7 +553,7 @@ require('lazy').setup({
       local servers = {
         -- clangd = {},
         -- gopls = {},
-        pyright = {},
+        basedpyright = {},
         jsonls = {},
         dockerls = {},
         zls = {},
@@ -782,6 +787,7 @@ require('lazy').setup({
 
   { -- Collection of various small independent plugins/modules
     'nvim-mini/mini.nvim',
+    lazy = false,
     config = function()
       -- Better Around/Inside textobjects
       --
@@ -797,6 +803,8 @@ require('lazy').setup({
       -- - sd'   - [S]urround [D]elete [']quotes
       -- - sr)'  - [S]urround [R]eplace [)] [']
       require('mini.surround').setup()
+
+      require('mini.notify').setup()
 
       -- Simple and easy statusline.
       --  You could remove this setup call if you don't like it,
@@ -825,7 +833,32 @@ require('lazy').setup({
       require('mini.indentscope').setup()
 
       -- Setup session tracking
-      local vim_session_dir = vim.fn.expand '~/.nvim/sessions/' .. vim.fn.getcwd()
+      local target_directory = vim.fn.getcwd()
+      local enable_session_tracking = false
+
+      if vim.fn.argc() > 0 then
+        local expanded = vim.fn.expand(vim.fn.argv(0))
+        if vim.fn.isdirectory(expanded) then
+          enable_session_tracking = true
+          target_directory = expanded
+        end
+      else
+        enable_session_tracking = true
+      end
+
+      target_directory = vim.fn.resolve(target_directory)
+      local vim_session_dir = vim.fn.resolve(vim.fn.expand('~/.nvim/sessions/' .. target_directory))
+
+      if enable_session_tracking then
+        vim.notify('Tracking session for: ' .. target_directory, vim.log.levels.INFO, {
+          title = 'Session',
+          duration = 5000,
+        })
+        vim.notify('Session stored in: ' .. vim_session_dir, vim.log.levels.INFO, {
+          title = 'Session',
+          duration = 5000,
+        })
+      end
 
       require('mini.sessions').setup {
         autoread = true,
@@ -834,7 +867,10 @@ require('lazy').setup({
 
       vim.api.nvim_create_autocmd({ 'VimLeavePre' }, {
         callback = function()
-          if vim.fn.argc() == 0 then MiniSessions.write 'session.vim' end
+          if enable_session_tracking then
+            MiniSessions.write 'session.vim'
+            print("Saved session for '" .. target_directory .. "' in '" .. vim_session_dir .. "'.")
+          end
         end,
       })
 
@@ -875,7 +911,7 @@ require('lazy').setup({
     branch = 'main',
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter-intro`
     config = function()
-      local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
+      local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'python' }
       require('nvim-treesitter').install(parsers)
       vim.api.nvim_create_autocmd('FileType', {
         callback = function(args)
@@ -901,6 +937,31 @@ require('lazy').setup({
     end,
   },
 
+  {
+    'github/copilot.vim',
+    branch = 'release',
+  },
+  {
+    'CopilotC-Nvim/CopilotChat.nvim',
+    dependencies = {
+      { 'nvim-lua/plenary.nvim', branch = 'master' },
+    },
+    build = 'make tiktoken',
+    config = function()
+      vim.g.copilot_no_tab_map = true
+      vim.keymap.set('i', '<C-y>', 'copilot#Accept("\\<S-Tab>")', { expr = true, replace_keycodes = false })
+
+      require('CopilotChat').setup {
+        model = 'claude-opus-4.5', -- AI model to use
+        temperature = 0.1, -- Lower = focused, higher = creative
+        window = {
+          layout = 'vertical', -- 'vertical', 'horizontal', 'float'
+          width = 0.5, -- 50% of screen width
+        },
+        auto_insert_mode = true, -- Enter insert mode when opening
+      }
+    end,
+  },
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
   -- place them in the correct locations.
