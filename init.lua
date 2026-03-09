@@ -81,6 +81,9 @@ vim.o.scrolloff = 10
 -- See `:help 'confirm'`
 vim.o.confirm = true
 
+-- What to include in session files for optimal session restoration.
+vim.o.sessionoptions = 'blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions'
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
@@ -832,55 +835,6 @@ require('lazy').setup({
       -- Setup scope autoindentation
       require('mini.indentscope').setup()
 
-      -- Setup session tracking
-      local target_directory = vim.fn.getcwd()
-      local enable_session_tracking = false
-
-      if vim.fn.argc() > 0 then
-        local expanded = vim.fn.expand(vim.fn.argv(0))
-        if vim.fn.isdirectory(expanded) then
-          enable_session_tracking = true
-          target_directory = expanded
-        end
-      else
-        enable_session_tracking = true
-      end
-
-      target_directory = vim.fn.resolve(target_directory)
-      local vim_session_dir = vim.fn.resolve(vim.fn.expand('~/.nvim/sessions/' .. target_directory))
-
-      if enable_session_tracking then
-        vim.notify('Tracking session for: ' .. target_directory, vim.log.levels.INFO, {
-          title = 'Session',
-          duration = 5000,
-        })
-        vim.notify('Session stored in: ' .. vim_session_dir, vim.log.levels.INFO, {
-          title = 'Session',
-          duration = 5000,
-        })
-      end
-
-      require('mini.sessions').setup {
-        autoread = true,
-        directory = vim_session_dir,
-      }
-
-      vim.api.nvim_create_autocmd({ 'VimLeavePre' }, {
-        callback = function()
-          if enable_session_tracking then
-            MiniSessions.write 'session.vim'
-            print("Saved session for '" .. target_directory .. "' in '" .. vim_session_dir .. "'.")
-          end
-        end,
-      })
-
-      vim.keymap.set(
-        'n',
-        '<leader>ms',
-        function() MiniSessions.write(vim.fn.input('Session Name > ', vim.fn.fnamemodify(vim.fn.getcwd(), ':t'))) end,
-        { desc = '[MiniSessions] Make Session' }
-      )
-
       -- Setup starter window
       require('mini.starter').setup()
 
@@ -902,6 +856,20 @@ require('lazy').setup({
       -- ... and there is more!
       --  Check out: https://github.com/nvim-mini/mini.nvim
     end,
+  },
+
+  {
+    'rmagatti/auto-session',
+    lazy = false,
+
+    ---enables autocomplete for opts
+    ---@module "auto-session"
+    ---@type AutoSession.Config
+    opts = {
+      suppressed_dirs = { '~/', '~/Projects', '~/Downloads', '/' },
+      single_session_mode = true,
+      -- log_level = 'debug',
+    },
   },
 
   { -- Highlight, edit, and navigate code
